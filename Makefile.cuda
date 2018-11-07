@@ -11,7 +11,7 @@ program_OBJS     := $(program_C_OBJS) $(program_CXX_OBJS) $(program_CU_OBJS)
 
 program_INCLUDE_DIRS :=	/usr/local/cuda/include
 program_LIBRARY_DIRS :=	/usr/local/cuda/lib64
-program_LIBRARIES    := curand cublas cudnn pthread
+program_LIBRARIES    := curand cublas cusparse cudnn
 #curand_static culibos	# using static linking of curand library for better performance
 
 CPPFLAGS += $(foreach includedir,$(program_INCLUDE_DIRS),-I$(includedir))
@@ -20,6 +20,7 @@ LDFLAGS += $(foreach library,$(program_LIBRARIES),-l$(library))
 
 CCFLAGS  =
 CXXFLAGS =	-std=c++11	-O1
+GPUFLAGS =	-Xptxas -O1,	# require comma here
 #--default-stream per-thread	# stream concurrency
 
 CC     =	g++
@@ -28,18 +29,25 @@ CXX    =	g++
 SM_ARCH  =      -arch=sm_50
 NVCC     =      /usr/local/cuda/bin/nvcc
 
-.PHONY: all clean distclean
+.PHONY: all debug verbose clean distclean
 
+all: VFLAGS	= 
 all: $(program_NAME)
 
+verbose: VFLAGS	= -v
+verbose: $(program_NAME)
+
 debug: CXXFLAGS = -DDEBUG	-g	-std=c++11	-lineinfo
+debug: GPUFLAGS = 
 debug: $(program_NAME)
 
+
+
 $(program_NAME): $(program_OBJS)
-	$(NVCC) $(SM_ARCH) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(program_OBJS) -o $(program_NAME)
+	$(NVCC)  $(GPUFLAGS) $(SM_ARCH) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(program_OBJS) -o $(program_NAME) $(VFLAGS)
 
 $(program_CU_OBJS): $(program_CU_SRCS)
-	$(NVCC) $(SM_ARCH) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) -c $(program_CU_SRCS)
+	$(NVCC)  $(GPUFLAGS) $(SM_ARCH) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) -c $(program_CU_SRCS) $(VFLAGS)
 
 
 clean:
